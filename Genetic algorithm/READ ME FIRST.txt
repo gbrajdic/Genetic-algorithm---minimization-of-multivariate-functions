@@ -1,0 +1,15 @@
+Glavni kod genetskog algoritma implementiran je kao funkcija i 
+nalazi se u m-fajalu genetski_algoritam.
+
+Svi ostali m-fajlovi osim m-fajla "test" su pomoæne funkcije.
+Detalji koda (parametri i funkcije) objašnjeni su u m-fajlu genetski_algoritam.
+
+Pojašnjenje strategije nalazi se u pdf fajlu Genetski algoritam.
+
+Za pokretanje i vizualizaciju pokrenite m-fajl "test" u matlabu.
+On æe pokrenuti algoritam na nekoliko funkcija (jedne i dviju varijabli),
+te ih nacrtati zajedno s minimumom.
+
+
+
+Algoritam je napisan u MATLABU 7.10.0 (R2010a)

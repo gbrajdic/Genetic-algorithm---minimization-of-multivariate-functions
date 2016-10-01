@@ -1,0 +1,140 @@
+%-------------------------------------------------------------------------
+% GENETSKI ALGORITAM - Goran Brajdiæ
+%-------------------------------------------------------------------------
+% Genetski algoritam za traženje minimuma funkcije na segmentu.
+% Algoritam je implementiran i za funkcije više varijabli. 
+% Implementirana je varijanta k - trunirske eliminacijske selekcije
+% Križanje je raðeno sa tp-toèaka prekida
+%-------------------------------------------------------------------------
+% ULAZNI PARAMETRI                                         
+%-------------------------------------------------------------------------
+% broj_var - broj varijabli funkcije koju minimiziramo
+% vektori a,b - segmenti [a(1),b(1)], [a(2),b(2)],...[a(broj_var),b(broj_var)] na kojem želimo minimizirati funkciju
+% vel_pop - velièina poèetne populacije
+% tp - broj toèaka prekida s kojima radimo operaciju križanja
+% k - k-turnirska eliminacijska selekcija
+% max_it - maksimalan broj iteracija
+% prec - preciznost (broj decimala)
+% opcije - su opcije za funkcije definirane u funkciji(m-fajlu) f:
+% opcije=1 æe minimizirati f-ju "f(x)=(x - 1)^2" na segmentu [0,2]
+% opcije=2 æe minimizirati f-ju "f(x)=10 + x^2 -10*cos(2 * pi * x)" na [-5,5]
+% opcije=3 æe minimizirati f-ju "f(x,y)=x^2 + (y-1)^2" na segmentima [-1,1] i [0,2]
+% opcije=4 æe minimizirati f-ju "f(x,y)=3*y^2+cos(x)" na segmentima [0,2*pi] i [-2,2]
+% opcije>=5 æe minimizirati f-ju "f(x,y)=10+x^2 + y^2 - 10 * cos(2*pi*x) na seg. [-3.5,3.5],[-2,2]"
+%--------------------------------------------------------------------------
+% IZLAZNI PARAMETRI                                        
+%--------------------------------------------------------------------------
+% x_min - minimum funkcije f
+% fx_min - vrijednost funkcije f u toèki minimuma
+%--------------------------------------------------------------------------
+% POMOÆNE FUNKCIJE
+%--------------------------------------------------------------------------
+% Algoritam koristi nekoliko pomoænih funkcija (m-fajlova):
+% [POC_POP]=stvori_pocetnu_pop(vel_pop,a,b,broj_var,prec) - stvara poèetnu populaciju 
+% maxf = max_f(POP, opcije) - vraæa maksimalnu vrijednost f-je f na skupu jedinki populacije 
+% rez=f(x, opcija) - odabire f-ju preko opcija, te je evaluira u var. x
+% r=slucajni_brojevi(k,b) - vraæa k razlièitih sluèajnih integera od 1 do b.
+% out=pretrazi_podliste(v,i) - vraæa vektor i-tih èlanova podlisti liste v (da mogu "šetati" od jedinke do jedinke i tražiti i-ti èlan) 
+% [D]=krizaj(R1,R2,k) - vraæa string (dijete) kao rezultat križanja 2
+% roditelja R1 i R2 s k toèaka prekida (rezultat križanja su zapravo 2
+% dijeteta ali funkcija odmah vrši i sluèajni odabir jednog od djeteta)
+% rjesenje=mutiraj(rjesenje, pr) - mutira svaki alel dijeteta s vjer. pr
+% bin_TO_gray() i gray_TO_bin() vrše pretvorbu binarnog alfabeta u gray alfabet i obratno
+% m-fajl "test" pokreæe algoritam za sve vrijednosti opcija, te osim što
+% ispisuje rješenja, ujedino i crta svaku funkciju zajedno sa njezinim minimumom 
+%--------------------------------------------------------------------------
+
+function [x_min,fx_min]=genetski_algoritam(broj_var, a, b, vel_pop, tp, k, max_it, prec, opcije)
+
+tic;
+n=ceil(log((b - a) * 10^prec +1)/log(2));               % potreban broj bitova
+d=(b - a)./(2.^n - 1);                                  % širina segmenta
+POP=stvori_pocetnu_pop(vel_pop,a,b,broj_var,prec);      % stvaraje poèetne populacije
+n10=zeros(vel_pop,broj_var);                            
+for i=1:broj_var
+    n10(:,i)=round((POP(:,i)-a(i))./d(i));              % stanja
+end
+
+maxf=max_f(POP,opcije);                                 %  K=maxf  u  (-f(x)+K)
+lista={{{}}};
+
+for i=1:vel_pop                     %kreiram poèetnu listu jedinki
+    pomlist={};
+    pomlist1={};
+    for j=1:broj_var
+        pomlist{j}=dec2bin(n10(i,j),n(j));
+        pomlist1{j}=bin_TO_gray(dec2bin(n10(i,j),n(j)));
+    end
+    lista{i}={{POP(i,:)}, {n10(i,:)}, pomlist, pomlist1, f(POP(i,:), opcije), -f(POP(i,:), opcije) + maxf };
+end
+
+it=1;
+
+while (it <= max_it)                            % algoritam kreæe sa iteracijama
+    
+    lista1=lista(slucajni_brojevi(k,vel_pop));  % odaberem k jedinki na sluèajan naèin
+    [~,ind1]=min(pretrazi_podliste(lista1,6));  % naðem onu sa najmanjim fitnesom (najslabiju)
+    
+    for i=1:vel_pop
+        if(strcmpi(lista1{ind1}{4},lista{i}{4}))    % naðem je u glavnoj listi
+            ind=i;
+            break;
+        end
+    end
+    
+    
+    lista1(ind1)=[];                                                       
+    
+    [~,ind2]=max(pretrazi_podliste(lista1,6));      % naðem jednog najboljeg roditelja
+    R1{1}=lista1{ind2}{4};
+    lista1(ind2)=[];                                    
+    
+    [~,ind3]=max(pretrazi_podliste(lista1,6));      % naðem drugog najboljeg roditelja
+    R1{2}=lista1{ind3}{4};
+    
+    if(tp>n-1)
+        tp=n-1;
+    end
+    
+    if(tp<1)
+        tp=1;
+    end
+    
+    D={};
+    for i=1:broj_var
+        D{i}=krizaj(R1{1}{i},R1{2}{i},tp);          % križam ih 
+        D{i}=mutiraj(D{i},1/length(D{i}));          % mutiram dijete
+        D_n2{i}=gray_TO_bin(D{i});                  % pretvorba iz gray u  bin. oblik  
+        D_n10{i}=bin2dec(D_n2{i});                  % pretvorba u stanje  
+        x_D{i}=round(((a(i) + D_n10{i}*d(i)))*10^prec)/10^prec;              % stanje u x
+    end
+    
+    if(lista{ind}{6}<(-f([x_D{1:end}],opcije)+maxf))    % ako je dijete bolje od najslabije jedinke
+        lista(ind)=[];                                  % izbriši najslabiju jedinku iz liste
+        if(f([x_D{1:end}],opcije)>maxf)                 % ako dijete ima najveæu vrijednost f-je u listi promjeni maxf, ako nema ostavi ga
+            maxf=f([x_D{1:end}],opcije);
+            lista{end+1}={x_D,D_n10,D_n2,D,f([x_D{1:end}],opcije),-f([x_D{1:end}],opcije)+ maxf};
+            
+            for i=1:vel_pop-1
+                lista{i}{6}=-f(lista{i}{1})+maxf;
+            end
+            
+        else
+            
+            lista{end+1}={x_D,D_n10,D_n2,D,f([x_D{1:end}],opcije),-f([x_D{1:end}],opcije)+ maxf};
+        end
+        
+    end
+    
+    it=it+1;            %poveæaj iteraciju za 1
+end
+
+
+[~,ind1]=max(pretrazi_podliste(lista,6));   % na kraju naði najbolju jedinku
+
+x_min=lista{ind1}{1};                       % vrati njezinu vrijednost x
+fx_min=lista{ind1}{5};                      % vrati njezinu vrijednost f(x)    
+toc;
+
+end
+
